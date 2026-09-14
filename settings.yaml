@@ -13,12 +13,12 @@ spec:
           key: theme_mode
           label: 主题模式
           value: 'user'
-          help: '设置博客的主题模式（用户/自动/浅色/暗黑），默认为用户模式，仅在用户模式下页面才有主题切换按钮，自动模式下根据时间自动切换'
+          help: '默认为用户模式：访客首次访问跟随系统深浅色，页面切换按钮可在 跟随系统/浅色/深色 间切换，手动选择优先并记住。定时模式按下方时间段切换，无切换按钮'
           options:
             - value: user
-              label: 用户模式
+              label: 用户模式（默认跟随系统）
             - value: auto
-              label: 自动模式
+              label: 定时模式
             - value: light
               label: 浅色模式
             - value: dark
@@ -193,7 +193,7 @@ spec:
           key: light_time_scope
           label: 浅色模式生效时间范围
           value: '5:00~19:00'
-          help: '设置浅色模式自动生效的时间范围，范围之外为暗黑模式（仅在主题模式为 “自动模式” 下生效），请严格按照规定格式设置，否则会导致报错'
+          help: '设置浅色模式自动生效的时间范围，范围之外为暗黑模式（仅在主题模式为 “定时模式” 下生效），请严格按照规定格式设置，否则会导致报错'
         - $formkit: group
           name: icp_police
           id: icp_police

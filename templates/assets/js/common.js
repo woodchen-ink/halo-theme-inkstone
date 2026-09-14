@@ -23,42 +23,39 @@ const commonContext = {
 		if ("scrollRestoration" in history) {
 			history.scrollRestoration = "manual";
 		}
-		if (ThemeConfig.theme_mode !== "user") return;
-		const $html = $("html");
-		const $icon_light = $(".mode-light");
-		const $icon_dark = $(".mode-dark");
-		let local_theme = localStorage.getItem("data-mode");
+		if (ThemeConfig.theme_mode !== "user" || !window.JoeMode) return;
+		const $items = $(".joe_action_item.mode");
+		const LABELS = { auto: "跟随系统", light: "浅色", dark: "深色" };
 
-		// 图标状态
-		$icon_light[`${local_theme === "light" ? "remove" : "add"}Class`]("active");
-		$icon_dark[`${local_theme === "light" ? "add" : "remove"}Class`]("active");
+		// 图标显示当前偏好（而非切换目标），三态下这样才读得懂
+		const render = (pref) => {
+			$items.find("svg").removeClass("active");
+			$items.find(`.mode-${pref}`).addClass("active");
+			$items.attr({
+				title: `主题：${LABELS[pref]}（点击切换）`,
+				"aria-label": `主题：${LABELS[pref]}`,
+			});
+		};
+		render(JoeMode.getPreference());
 
-		// 手动切换
-		$(".joe_action_item.mode").on("click", function (e) {
+		/*
+		 * 切换顺序：自动 → 与系统相反 → 与系统相同 → 自动
+		 * 保证前两次点击页面都有可见变化，最后一次回到跟随系统
+		 */
+		$items.on("click", function (e) {
 			e.stopPropagation();
 			try {
-				local_theme = localStorage.getItem("data-mode");
-				let theme = "";
-				if (local_theme) {
-					theme = local_theme === "light" ? "dark" : "light";
-					$icon_light[`${local_theme === "light" ? "add" : "remove"}Class`](
-						"active"
-					);
-					$icon_dark[`${local_theme === "light" ? "remove" : "add"}Class`](
-						"active"
-					);
-					// var commentElement = document.querySelector("halo\\:comment"); // 使用反斜杠转义冒号
-					// commentElement.setAttribute("colorScheme", "'" + local_theme + "'");
-				} else {
-					theme = "dark";
-					$icon_light.removeClass("active");
-					$icon_dark.addClass("active");
-				}
-				$html.attr("data-mode", theme);
-				localStorage.setItem("data-mode", theme);
+				const pref = JoeMode.getPreference();
+				const system = JoeMode.systemMode();
+				let next;
+				if (pref === "auto") next = system === "dark" ? "light" : "dark";
+				else if (pref !== system) next = system;
+				else next = "auto";
+				JoeMode.setPreference(next);
+				JoeMode.apply();
+				render(next);
 				commonContext.initCommentTheme();
-			} catch (err) {
-				}
+			} catch (err) {}
 		});
 	},
 	/* 加载条 */

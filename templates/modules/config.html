@@ -29,10 +29,47 @@
     </script>
 
     <script id="theme-config-getter" type="text/javascript">
+      /*
+       * 访客主题偏好（仅后台"用户模式"下生效）：auto | light | dark
+       * - 本地没有记录 = auto，跟随系统 prefers-color-scheme，并实时响应系统切换
+       * - 访客手动选过 light/dark 则以手动为准，存 localStorage 的 theme-preference
+       * 旧键 data-mode 不再使用：旧逻辑每次加载都会把默认值 'light' 写进去，
+       * 无法区分"手动选的"和"默认写入的"，沿用会让所有老访客永远停在浅色
+       */
+      window.JoeMode = {
+        KEY: 'theme-preference',
+        media: window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null,
+        getPreference: function () {
+          try {
+            var v = localStorage.getItem(this.KEY);
+            return v === 'light' || v === 'dark' ? v : 'auto';
+          } catch (e) {
+            return 'auto';
+          }
+        },
+        setPreference: function (pref) {
+          try {
+            if (pref === 'auto') localStorage.removeItem(this.KEY);
+            else localStorage.setItem(this.KEY, pref);
+          } catch (e) {}
+        },
+        systemMode: function () {
+          return this.media && this.media.matches ? 'dark' : 'light';
+        },
+        resolve: function () {
+          var pref = this.getPreference();
+          return pref === 'auto' ? this.systemMode() : pref;
+        },
+        apply: function () {
+          document.documentElement.setAttribute('data-mode', this.resolve());
+        },
+      };
+
       // 读取主题模式
       var initThemeMode = function () {
         try {
           var curMode = '';
+          localStorage.removeItem('data-mode');
           if (ThemeConfig.theme_mode === 'auto') {
             var light_scope = ThemeConfig.light_time_scope.split('~');
             var now = new Date();
@@ -42,15 +79,27 @@
               now <= new Date(today + ' ' + light_scope[1])
                 ? 'light'
                 : 'dark';
-            localStorage.removeItem('data-mode');
           } else if (ThemeConfig.theme_mode === 'user') {
-            // 用户模式下优先从本地取主题模式，默认为浅色
-            curMode = localStorage.getItem('data-mode') || 'light';
-            localStorage.setItem('data-mode', curMode);
+            // 用户模式：手动偏好优先，否则跟随系统
+            curMode = JoeMode.resolve();
+            var onSystemChange = function () {
+              if (JoeMode.getPreference() !== 'auto') return;
+              JoeMode.apply();
+              try {
+                // common.js 里是顶层 const，不挂在 window 上
+                if (typeof commonContext !== 'undefined') commonContext.initCommentTheme();
+              } catch (e) {}
+            };
+            if (JoeMode.media) {
+              if (JoeMode.media.addEventListener) {
+                JoeMode.media.addEventListener('change', onSystemChange);
+              } else if (JoeMode.media.addListener) {
+                JoeMode.media.addListener(onSystemChange);
+              }
+            }
           } else {
             // 非用户模式下直接取后台配置的模式
             curMode = ThemeConfig.theme_mode;
-            localStorage.removeItem('data-mode');
           }
           document.querySelector('html').setAttribute('data-mode', curMode);
         } catch (e) {
